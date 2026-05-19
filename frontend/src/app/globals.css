@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --ring: 221 83% 53%;
+  }
+  * { @apply border-gray-200; }
+  body { @apply bg-gray-50 text-gray-900 antialiased; }
+}
+
+.fc .fc-button-primary {
+  background-color: #1A5276 !important;
+  border-color: #154360 !important;
+}
+.fc .fc-button-primary:hover {
+  background-color: #154360 !important;
+}
+.fc-event { cursor: pointer; }
