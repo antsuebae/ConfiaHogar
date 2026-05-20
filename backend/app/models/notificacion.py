@@ -8,6 +8,7 @@ from app.database import Base
 class TipoNotificacion(str, enum.Enum):
     mensaje_nuevo = "mensaje_nuevo"
     cita_cancelada = "cita_cancelada"
+    cita_confirmada = "cita_confirmada"
     presupuesto_recibido = "presupuesto_recibido"
     pago_recibido = "pago_recibido"
     resena_recibida = "resena_recibida"

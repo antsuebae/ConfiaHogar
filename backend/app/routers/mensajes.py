@@ -37,6 +37,7 @@ def crear_conversacion(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    from sqlalchemy.exc import IntegrityError
     existente = db.query(Conversacion).filter(
         Conversacion.cliente_id == current_user.id,
         Conversacion.profesional_id == data.profesional_id,
@@ -45,9 +46,17 @@ def crear_conversacion(
         return _conv_response(existente, current_user.id)
     conv = Conversacion(cliente_id=current_user.id, profesional_id=data.profesional_id)
     db.add(conv)
-    db.commit()
-    db.refresh(conv)
-    return _conv_response(conv, current_user.id)
+    try:
+        db.commit()
+        db.refresh(conv)
+        return _conv_response(conv, current_user.id)
+    except IntegrityError:
+        db.rollback()
+        existente = db.query(Conversacion).filter(
+            Conversacion.cliente_id == current_user.id,
+            Conversacion.profesional_id == data.profesional_id,
+        ).first()
+        return _conv_response(existente, current_user.id)
 
 
 @router.get("/conversaciones", response_model=List[ConversacionResponse])
@@ -62,6 +71,18 @@ def mis_conversaciones(
         prof = current_user.perfil_profesional
         convs = db.query(Conversacion).filter(Conversacion.profesional_id == prof.id).all() if prof else []
     return [_conv_response(c, current_user.id) for c in convs]
+
+
+@router.get("/conversaciones/{conv_id}", response_model=ConversacionResponse)
+def get_conversacion(
+    conv_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    conv = db.query(Conversacion).filter(Conversacion.id == conv_id).first()
+    if not conv:
+        raise HTTPException(404, "Conversación no encontrada")
+    return _conv_response(conv, current_user.id)
 
 
 @router.get("/conversaciones/{conv_id}/mensajes", response_model=List[MensajeResponse])

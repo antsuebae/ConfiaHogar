@@ -50,6 +50,8 @@ class ProfesionalResponse(ProfesionalBase):
     id: int
     usuario_id: int
     verificado: bool
+    verificacion_pendiente: bool = False
+    cuenta_verificada: bool = False
     disponible: bool
     perfil_visible: bool
     valoracion_media: float

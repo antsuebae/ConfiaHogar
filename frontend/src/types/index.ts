@@ -1,4 +1,4 @@
-export type RolUsuario = "cliente" | "profesional"
+export type RolUsuario = "cliente" | "profesional" | "admin"
 
 export interface Usuario {
   id: number
@@ -9,7 +9,7 @@ export interface Usuario {
   rol: RolUsuario
   foto_perfil_url?: string
   descripcion?: string
-  estado: string
+  estado: "activa" | "pausada" | "baneada" | "eliminada"
   saldo: number
   creado_en: string
 }
@@ -39,6 +39,8 @@ export interface ProfesionalDetalle extends ProfesionalCard {
   perfil_visible: boolean
   saldo_pendiente: number
   total_servicios: number
+  cuenta_verificada: boolean
+  verificacion_pendiente: boolean
   certificaciones: Certificacion[]
   creado_en: string
 }
@@ -65,10 +67,18 @@ export interface Cita {
   motivo_cancelacion?: string
   cancelacion_tardia: boolean
   recordatorio_minutos?: number
+  fecha_propuesta?: string
   creado_en: string
   nombre_profesional?: string
   foto_profesional?: string
   nombre_cliente?: string
+}
+
+export interface FranjaDisponible {
+  id: number
+  dia_semana: number
+  hora_inicio: string
+  hora_fin: string
 }
 
 export interface Mensaje {
@@ -128,19 +138,32 @@ export interface Resena {
 export interface Transaccion {
   id: number
   cita_id: number
+  cliente_id: number
+  profesional_id: number
   importe: number
   comision: number
   importe_neto: number
-  metodo: "google_pay" | "efectivo" | "saldo_app"
-  estado: "pendiente" | "pendiente_validacion" | "completada" | "congelada" | "discrepancia"
+  metodo: "google_pay" | "efectivo"
+  estado: "pendiente" | "pendiente_validacion" | "completada" | "congelada" | "discrepancia" | "reembolsada"
   referencia_externa?: string
   creado_en: string
 }
 
+export type TipoNotificacion =
+  | "mensaje_nuevo"
+  | "cita_cancelada"
+  | "cita_confirmada"
+  | "presupuesto_recibido"
+  | "pago_recibido"
+  | "resena_recibida"
+  | "recordatorio_cita"
+  | "cuenta_verificada"
+  | "discrepancia_pago"
+
 export interface Notificacion {
   id: number
   usuario_id: number
-  tipo: string
+  tipo: TipoNotificacion
   titulo: string
   cuerpo?: string
   leida: boolean

@@ -122,6 +122,11 @@ export default function DashboardProfesionalPage() {
                 <Star className="h-5 w-5" /> Reseñas
               </Button>
             </Link>
+            <Link href="/profesional/cobros" className="col-span-2">
+              <Button variant="outline" className="w-full h-12 gap-2 text-sm">
+                <Euro className="h-4 w-4" /> Ver cobros y retirar fondos
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

@@ -95,8 +95,10 @@ export default function ResenasProfesionalPage() {
                   <EstrellasPicker value={r.estrellas} onChange={() => {}} readonly size="sm" />
                   {r.comentario && <p className="mt-1 text-gray-700 text-sm">{r.comentario}</p>}
                   {r.imagen_url && (
-                    <img src={r.imagen_url} alt="Imagen reseña" className="mt-2 rounded-lg h-32 object-cover cursor-pointer"
-                      onClick={() => window.open(r.imagen_url, "_blank")} />
+                    <img src={r.imagen_url} alt="Imagen reseña" role="button" tabIndex={0}
+                      className="mt-2 rounded-lg h-32 object-cover cursor-pointer"
+                      onClick={() => window.open(r.imagen_url, "_blank")}
+                      onKeyDown={(e) => e.key === "Enter" && window.open(r.imagen_url, "_blank")} />
                   )}
                   {r.respuesta_profesional && (
                     <div className="mt-3 pl-3 border-l-2 border-primary-300">

@@ -14,6 +14,20 @@ class EstadoCita(str, enum.Enum):
     cancelada_profesional = "cancelada_profesional"
 
 
+_TRANSICIONES_VALIDAS: dict[EstadoCita, set[EstadoCita]] = {
+    EstadoCita.pendiente: {EstadoCita.confirmada, EstadoCita.cancelada_cliente, EstadoCita.cancelada_profesional},
+    EstadoCita.confirmada: {EstadoCita.en_curso, EstadoCita.completada, EstadoCita.cancelada_cliente, EstadoCita.cancelada_profesional},
+    EstadoCita.en_curso: {EstadoCita.completada, EstadoCita.cancelada_profesional},
+    EstadoCita.completada: set(),
+    EstadoCita.cancelada_cliente: set(),
+    EstadoCita.cancelada_profesional: set(),
+}
+
+
+def valid_transition(actual: EstadoCita, objetivo: EstadoCita) -> bool:
+    return objetivo in _TRANSICIONES_VALIDAS.get(actual, set())
+
+
 class Cita(Base):
     __tablename__ = "citas"
 
@@ -33,6 +47,7 @@ class Cita(Base):
 
     recordatorio_minutos = Column(Integer, nullable=True)  # minutos antes
     recordatorio_enviado = Column(Boolean, default=False)
+    fecha_propuesta = Column(DateTime, nullable=True)  # profesional propone cambio de hora
 
     creado_en = Column(DateTime, server_default=func.now())
     actualizado_en = Column(DateTime, server_default=func.now(), onupdate=func.now())

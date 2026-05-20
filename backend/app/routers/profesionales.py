@@ -125,16 +125,17 @@ def actualizar_perfil_profesional(
 
 
 @router.post("/me/verificar")
-def solicitar_verificacion(
+async def solicitar_verificacion(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_profesional),
 ):
     prof = current_user.perfil_profesional
-    # En prod: guardar y notificar admin. Aquí auto-aprobamos para el MVP.
-    prof.verificado = True
+    url = await upload_document(file, folder="verificaciones")
+    prof.verificacion_pendiente = True
+    prof.verificado = False
     db.commit()
-    return {"mensaje": "Verificación solicitada. Tu perfil obtendrá la insignia Verificado.", "verificado": True}
+    return {"mensaje": "Solicitud enviada. Un administrador revisará tu documentación en breve.", "en_revision": True}
 
 
 @router.post("/me/certificaciones", response_model=CertificacionResponse)
@@ -156,6 +157,33 @@ async def subir_certificacion(
     db.commit()
     db.refresh(cert)
     return cert
+
+
+@router.post("/me/retirar")
+def retirar_fondos(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_profesional),
+):
+    from app.models.transaccion import Transaccion, MetodoPago, EstadoTransaccion
+    import uuid
+    prof = current_user.perfil_profesional
+    if not prof:
+        raise HTTPException(404, "Perfil profesional no encontrado")
+    if not prof.cuenta_verificada or not prof.iban_token:
+        raise HTTPException(400, "Debes configurar y verificar tus datos de cobro antes de retirar fondos")
+    saldo = prof.saldo_pendiente or 0
+    if saldo <= 0:
+        raise HTTPException(400, "No tienes saldo disponible para retirar")
+
+    referencia = f"RETIR-{uuid.uuid4().hex[:10].upper()}"
+    prof.saldo_pendiente = 0.0
+    db.commit()
+    return {
+        "mensaje": f"Solicitud de retirada de {saldo:.2f}€ registrada",
+        "importe": saldo,
+        "referencia": referencia,
+        "iban_destino": prof.iban_token,
+    }
 
 
 @router.post("/me/datos-cobro")

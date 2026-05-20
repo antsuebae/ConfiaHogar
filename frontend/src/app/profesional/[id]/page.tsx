@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { EstrellasPicker } from "@/components/resena/EstrellasPicker"
 import { api } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
@@ -20,6 +23,10 @@ export default function PerfilProfesionalPage() {
   const [prof, setProf] = useState<ProfesionalDetalle | null>(null)
   const [resenas, setResenas] = useState<Resena[]>([])
   const [cargando, setCargando] = useState(true)
+  const [modalCita, setModalCita] = useState(false)
+  const [fechaCita, setFechaCita] = useState("")
+  const [tituloCita, setTituloCita] = useState("")
+  const [creandoCita, setCreandoCita] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -38,6 +45,31 @@ export default function PerfilProfesionalPage() {
       const res = await api.post("/mensajes/conversaciones", { profesional_id: Number(id) })
       router.push(`/chat/${res.data.id}`)
     } catch { toast.error("Error al iniciar conversación") }
+  }
+
+  const pedirCita = async () => {
+    if (!fechaCita || !tituloCita.trim()) {
+      toast.error("Rellena la fecha y el título del servicio")
+      return
+    }
+    setCreandoCita(true)
+    try {
+      await api.post("/citas/", {
+        profesional_id: prof?.id,
+        titulo: tituloCita.trim(),
+        fecha_inicio: new Date(fechaCita).toISOString(),
+      })
+      toast.success("¡Cita creada! Puedes verla en tu calendario")
+      setModalCita(false)
+      setFechaCita("")
+      setTituloCita("")
+      router.push("/calendario")
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || "Error al crear la cita")
+    } finally {
+      setCreandoCita(false)
+    }
   }
 
   if (cargando) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /></div>
@@ -97,9 +129,11 @@ export default function PerfilProfesionalPage() {
                 <Button onClick={contactar} className="gap-2">
                   <MessageSquare className="h-4 w-4" /> Contactar
                 </Button>
-                {usuario && <Button variant="outline" className="gap-2">
-                  <Calendar className="h-4 w-4" /> Pedir cita
-                </Button>}
+                {usuario && usuario.rol === "cliente" && (
+                  <Button variant="outline" className="gap-2" onClick={() => setModalCita(true)}>
+                    <Calendar className="h-4 w-4" /> Pedir cita
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -155,8 +189,11 @@ export default function PerfilProfesionalPage() {
                       <img
                         src={r.imagen_url}
                         alt="Foto del trabajo"
+                        role="button"
+                        tabIndex={0}
                         className="mt-2 rounded-lg h-32 object-cover cursor-pointer"
                         onClick={() => window.open(r.imagen_url, "_blank")}
+                        onKeyDown={(e) => e.key === "Enter" && window.open(r.imagen_url, "_blank")}
                       />
                     )}
                     {r.respuesta_profesional && (
@@ -172,6 +209,47 @@ export default function PerfilProfesionalPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal pedir cita */}
+      <Dialog open={modalCita} onOpenChange={setModalCita}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary-600" />
+              Pedir cita con {prof?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="titulo-cita">Descripción del servicio *</Label>
+              <Input
+                id="titulo-cita"
+                value={tituloCita}
+                onChange={(e) => setTituloCita(e.target.value)}
+                placeholder="ej: Reparación fuga tubería"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="fecha-cita">Fecha y hora *</Label>
+              <Input
+                id="fecha-cita"
+                type="datetime-local"
+                value={fechaCita}
+                onChange={(e) => setFechaCita(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={pedirCita} disabled={creandoCita || !fechaCita || !tituloCita.trim()} className="flex-1">
+                {creandoCita ? "Creando..." : "Confirmar cita"}
+              </Button>
+              <Button variant="outline" onClick={() => setModalCita(false)} className="flex-1">Cancelar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

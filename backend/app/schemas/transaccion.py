@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from app.models.transaccion import MetodoPago, EstadoTransaccion
@@ -6,12 +6,12 @@ from app.models.transaccion import MetodoPago, EstadoTransaccion
 
 class PagoGooglePayRequest(BaseModel):
     cita_id: int
-    importe: float
+    importe: float = Field(gt=0, description="Importe a pagar, debe ser mayor que 0")
 
 
 class PagoEfectivoRequest(BaseModel):
     cita_id: int
-    importe: float
+    importe: float = Field(gt=0, description="Importe a pagar, debe ser mayor que 0")
 
 
 class ConfirmarEfectivoRequest(BaseModel):

@@ -8,7 +8,6 @@ from app.database import Base
 class MetodoPago(str, enum.Enum):
     google_pay = "google_pay"
     efectivo = "efectivo"
-    saldo_app = "saldo_app"
 
 
 class EstadoTransaccion(str, enum.Enum):

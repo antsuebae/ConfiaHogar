@@ -16,11 +16,24 @@ export default function BuscarPage() {
   const [valoracionMin, setValoracionMin] = useState("")
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
+  const [codigoPostal, setCodigoPostal] = useState("")
+  const [mostrarCp, setMostrarCp] = useState(false)
   const [resultados, setResultados] = useState<ProfesionalCard[]>([])
   const [cargando, setCargando] = useState(false)
   const [buscado, setBuscado] = useState(false)
 
-  const buscar = async (usarGeo = false) => {
+  // Minimal CP→lat/lng table for demo (major Spanish cities)
+  const CP_TABLE: Record<string, [number, number]> = {
+    "28001": [40.4168, -3.7038], "28080": [40.4168, -3.7038],
+    "41001": [37.3891, -5.9845], "41004": [37.3891, -5.9845],
+    "08001": [41.3851, 2.1734],  "08080": [41.3851, 2.1734],
+    "46001": [39.4699, -0.3763], "46080": [39.4699, -0.3763],
+    "29001": [36.7213, -4.4213], "29080": [36.7213, -4.4213],
+    "15001": [43.3623, -8.4115], "15080": [43.3623, -8.4115],
+    "50001": [41.6561, -0.8773], "50080": [41.6561, -0.8773],
+  }
+
+  const buscar = async (usarGeo = false, latOverride?: number, lngOverride?: number) => {
     setCargando(true)
     setBuscado(true)
     try {
@@ -29,9 +42,11 @@ export default function BuscarPage() {
       if (precioMax && !isNaN(Number(precioMax))) queryParams.precio_max = precioMax
       else if (precioMax) { toast.error("El precio debe ser un número"); setCargando(false); return }
       if (valoracionMin) queryParams.valoracion_min = valoracionMin
-      if (usarGeo && lat !== null && lng !== null) {
-        queryParams.lat = String(lat)
-        queryParams.lng = String(lng)
+      const latFinal = latOverride ?? lat
+      const lngFinal = lngOverride ?? lng
+      if (usarGeo && latFinal !== null && lngFinal !== null) {
+        queryParams.lat = String(latFinal)
+        queryParams.lng = String(lngFinal)
         queryParams.radio_km = "5"
       }
       const res = await api.get("/profesionales/buscar", { params: queryParams })
@@ -41,6 +56,23 @@ export default function BuscarPage() {
     } finally {
       setCargando(false)
     }
+  }
+
+  const buscarPorCp = () => {
+    const cp = codigoPostal.trim()
+    if (cp.length !== 5 || !/^\d{5}$/.test(cp)) {
+      toast.error("Introduce un código postal válido de 5 dígitos")
+      return
+    }
+    const coords = CP_TABLE[cp]
+    if (!coords) {
+      toast.error("Código postal no reconocido. Prueba con la ciudad en el buscador.")
+      return
+    }
+    const [latCp, lngCp] = coords
+    setLat(latCp)
+    setLng(lngCp)
+    buscar(true, latCp, lngCp)
   }
 
   const usarGeolocalizacion = () => {
@@ -53,17 +85,19 @@ export default function BuscarPage() {
         setLat(pos.coords.latitude)
         setLng(pos.coords.longitude)
         toast.success("Ubicación obtenida")
-        buscar(true)
+        buscar(true, pos.coords.latitude, pos.coords.longitude)
       },
       () => {
-        toast.error("Ubicación denegada. Introduce tu código postal para buscar cerca.")
+        setMostrarCp(true)
+        toast.error("Ubicación denegada. Introduce tu código postal.")
       }
     )
   }
 
   useEffect(() => {
     if (params.get("profesion")) buscar()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.get("profesion")])
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -92,6 +126,20 @@ export default function BuscarPage() {
             <MapPin className="h-4 w-4" /> Cerca de mí
           </Button>
         </div>
+        {mostrarCp && (
+          <div className="flex items-center gap-2 mt-2">
+            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <Input
+              value={codigoPostal}
+              onChange={(e) => setCodigoPostal(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && buscarPorCp()}
+              placeholder="Código postal (ej: 41001)"
+              className="w-48"
+              maxLength={5}
+            />
+            <Button size="sm" onClick={buscarPorCp}>Buscar cerca</Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <SlidersHorizontal className="h-4 w-4" />
@@ -99,8 +147,9 @@ export default function BuscarPage() {
         </div>
         <div className="flex gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 whitespace-nowrap">Precio máx (€/h):</label>
+            <label htmlFor="buscar-precio" className="text-sm text-gray-600 whitespace-nowrap">Precio máx (€/h):</label>
             <Input
+              id="buscar-precio"
               value={precioMax}
               onChange={(e) => setPrecioMax(e.target.value)}
               placeholder="ej: 50"
@@ -110,8 +159,9 @@ export default function BuscarPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 whitespace-nowrap">Valoración mín:</label>
+            <label htmlFor="buscar-valoracion" className="text-sm text-gray-600 whitespace-nowrap">Valoración mín:</label>
             <select
+              id="buscar-valoracion"
               value={valoracionMin}
               onChange={(e) => setValoracionMin(e.target.value)}
               className="h-10 rounded-md border border-gray-300 px-3 text-sm"

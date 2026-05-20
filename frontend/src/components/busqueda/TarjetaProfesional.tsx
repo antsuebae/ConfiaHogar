@@ -31,9 +31,9 @@ export function TarjetaProfesional({ profesional }: Props) {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <h3 className="font-semibold text-gray-900 truncate">{profesional.nombre}</h3>
-                <p className="text-sm text-primary-600 font-medium">{profesional.profesion}</p>
+                <p className="text-sm text-primary-600 font-medium truncate">{profesional.profesion}</p>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 {profesional.disponible ? (

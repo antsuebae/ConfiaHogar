@@ -16,3 +16,8 @@ export function formatDate(date: string | Date): string {
 export function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
+
+export function getApiError(err: unknown, fallback = "Error"): string {
+  const e = err as { response?: { data?: { detail?: string } } }
+  return e?.response?.data?.detail || fallback
+}

@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.usuario import Usuario, EstadoCuenta
+from app.models.cita import Cita, EstadoCita
 from app.schemas.usuario import UsuarioUpdate, UsuarioResponse, EliminarCuentaRequest, RecargaSaldoRequest, DatosPagoRequest
 from app.utils.auth import get_current_user
 from app.utils.storage import upload_image
+from app.utils.validation import luhn_check
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -77,7 +79,18 @@ def guardar_datos_pago(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    # Validación básica IBAN (longitud)
+    tipo = getattr(data, "tipo", "iban") or "iban"
+
+    if tipo == "tarjeta":
+        numero = (data.iban or "").replace(" ", "").replace("-", "")
+        if not luhn_check(numero):
+            raise HTTPException(400, "Número de tarjeta inválido (dígito de control Luhn incorrecto)")
+        masked = "*" * (len(numero) - 4) + numero[-4:]
+        current_user.metodo_pago_token = f"CARD-{masked}"
+        db.commit()
+        return {"mensaje": "Tarjeta guardada", "tarjeta_enmascarada": masked}
+
+    # IBAN path
     iban = data.iban.replace(" ", "").upper()
     if len(iban) < 15 or len(iban) > 34:
         raise HTTPException(400, "IBAN inválido")
@@ -85,7 +98,6 @@ def guardar_datos_pago(
     supported = ["ES", "FR", "DE", "IT", "PT", "GB", "NL", "BE"]
     if country not in supported:
         raise HTTPException(400, f"IBAN de país no soportado ({country})")
-    # Guardar tokenizado (en prod usaríamos Stripe/etc.)
     masked = iban[:4] + "*" * (len(iban) - 8) + iban[-4:]
     current_user.metodo_pago_token = masked
     db.commit()
@@ -102,6 +114,28 @@ def eliminar_cuenta(
         raise HTTPException(400, "Debes escribir 'ELIMINAR' para confirmar")
     if current_user.saldo and current_user.saldo > 0:
         raise HTTPException(400, f"Tienes {current_user.saldo}€ de saldo pendiente. Retira el dinero antes de eliminar la cuenta.")
+
+    # HU23/HU42 — block deletion with active appointments
+    estados_activos = [EstadoCita.pendiente, EstadoCita.confirmada, EstadoCita.en_curso]
+    citas_activas = db.query(Cita).filter(
+        Cita.cliente_id == current_user.id,
+        Cita.estado.in_(estados_activos),
+    ).count()
+    if citas_activas:
+        raise HTTPException(400, f"Tienes {citas_activas} cita(s) activa(s). Cancélalas antes de eliminar la cuenta.")
+
+    # HU42 — additional check for professionals: block if retained balance
+    if current_user.perfil_profesional:
+        prof = current_user.perfil_profesional
+        if prof.saldo_pendiente and prof.saldo_pendiente > 0:
+            raise HTTPException(400, f"Tienes {prof.saldo_pendiente:.2f}€ de saldo retenido. Retíralo antes de eliminar la cuenta.")
+        citas_prof = db.query(Cita).filter(
+            Cita.profesional_id == prof.id,
+            Cita.estado.in_(estados_activos),
+        ).count()
+        if citas_prof:
+            raise HTTPException(400, f"Tienes {citas_prof} cita(s) activa(s) como profesional. Resuélvelas antes de eliminar la cuenta.")
+
     current_user.estado = EstadoCuenta.eliminada
     db.commit()
     return {"mensaje": "Cuenta eliminada correctamente"}

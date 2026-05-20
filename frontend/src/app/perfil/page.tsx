@@ -135,16 +135,17 @@ export default function PerfilClientePage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700">Nombre</label>
-            <Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="mt-1" />
+            <label htmlFor="perfil-nombre" className="text-sm font-medium text-gray-700">Nombre</label>
+            <Input id="perfil-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} className="mt-1" />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-sm font-medium text-gray-700">Descripción</label>
+              <label htmlFor="perfil-descripcion" className="text-sm font-medium text-gray-700">Descripción</label>
               <span className={`text-xs ${descRestantes < 50 ? "text-danger" : "text-gray-400"}`}>{descRestantes} restantes</span>
             </div>
             <textarea
+              id="perfil-descripcion"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
               maxLength={MAX_DESC}

@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Calendar as CalIcon, Plus, Search, Bell } from "lucide-react"
+import { Calendar as CalIcon, Plus, Search, Bell, CalendarClock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { api } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
+import { useWebSocket } from "@/hooks/useWebSocket"
 import type { Cita } from "@/types"
 import { formatDate } from "@/lib/utils"
 import toast from "react-hot-toast"
@@ -43,6 +44,10 @@ export default function CalendarioPage() {
   const [dayGridPlugin, setDayGridPlugin] = useState<unknown>(null)
   const [timeGridPlugin, setTimeGridPlugin] = useState<unknown>(null)
   const [interactionPlugin, setInteractionPlugin] = useState<unknown>(null)
+
+  useWebSocket((data) => {
+    if (data.tipo === "cita_actualizada") cargarCitas()
+  })
 
   useEffect(() => {
     if (!usuario) { router.push("/login"); return }
@@ -84,6 +89,18 @@ export default function CalendarioPage() {
       toast.error(e.response?.data?.detail || "Error al cancelar la cita")
     } finally {
       setCancelando(false)
+    }
+  }
+
+  const aceptarPropuesta = async (cita: Cita) => {
+    try {
+      await api.post(`/citas/${cita.id}/aceptar-propuesta`)
+      toast.success("Nueva fecha confirmada")
+      setCitaSeleccionada(null)
+      cargarCitas()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || "Error al aceptar la propuesta")
     }
   }
 
@@ -174,6 +191,27 @@ export default function CalendarioPage() {
                   {citaSeleccionada.ubicacion && <div className="flex gap-2"><span className="text-gray-500 w-28">Ubicación:</span><span>{citaSeleccionada.ubicacion}</span></div>}
                   {citaSeleccionada.descripcion && <div className="flex gap-2"><span className="text-gray-500 w-28">Descripción:</span><span>{citaSeleccionada.descripcion}</span></div>}
                 </div>
+
+                {/* Propuesta de nueva fecha del profesional */}
+                {citaSeleccionada.fecha_propuesta && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                    <p className="text-sm font-semibold text-amber-800 flex items-center gap-1">
+                      <CalendarClock className="h-4 w-4" />
+                      El profesional propone otro horario
+                    </p>
+                    <p className="text-sm text-amber-700">
+                      <strong>{formatDate(citaSeleccionada.fecha_propuesta)}</strong>
+                    </p>
+                    <p className="text-xs text-amber-600">Fecha original: {formatDate(citaSeleccionada.fecha_inicio)}</p>
+                    <Button
+                      size="sm"
+                      className="w-full gap-1 bg-amber-600 hover:bg-amber-700"
+                      onClick={() => aceptarPropuesta(citaSeleccionada)}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" /> Aceptar nuevo horario
+                    </Button>
+                  </div>
+                )}
 
                 {!["cancelada_cliente", "cancelada_profesional", "completada"].includes(citaSeleccionada.estado) && (
                   <div className="space-y-3 pt-2 border-t">

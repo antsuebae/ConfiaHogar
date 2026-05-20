@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useRef, useCallback } from "react"
-import { WS_URL } from "@/lib/api"
+import { WS_URL } from "@/lib/config"
 import { useAuthStore } from "@/store/auth"
 import { useNotificacionesStore } from "@/store/notificaciones"
 
@@ -10,10 +10,16 @@ export function useWebSocket(onMessage?: WSHandler) {
   const { token } = useAuthStore()
   const { addNotificacion } = useNotificacionesStore()
   const wsRef = useRef<WebSocket | null>(null)
-  const handlersRef = useRef(onMessage)
-  handlersRef.current = onMessage
+  const handlersRef = useRef<WSHandler | undefined>(undefined)
+  const isMountedRef = useRef(true)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    handlersRef.current = onMessage
+  }, [onMessage])
 
   const connect = useCallback(() => {
+    if (!isMountedRef.current) return
     if (!token || wsRef.current?.readyState === WebSocket.OPEN) return
     const ws = new WebSocket(`${WS_URL}/mensajes/ws/${token}`)
     ws.onmessage = (e) => {
@@ -26,14 +32,24 @@ export function useWebSocket(onMessage?: WSHandler) {
       } catch {}
     }
     ws.onclose = () => {
-      setTimeout(connect, 3000)
+      if (isMountedRef.current) {
+        reconnectTimerRef.current = setTimeout(connect, 3000)
+      }
+    }
+    ws.onerror = () => {
+      ws.close()
     }
     wsRef.current = ws
   }, [token, addNotificacion])
 
   useEffect(() => {
+    isMountedRef.current = true
     connect()
-    return () => wsRef.current?.close()
+    return () => {
+      isMountedRef.current = false
+      clearTimeout(reconnectTimerRef.current)
+      wsRef.current?.close()
+    }
   }, [connect])
 
   const send = useCallback((data: object) => {

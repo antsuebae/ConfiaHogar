@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { CreditCard, CheckCircle, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -9,26 +9,42 @@ import { formatEuros } from "@/lib/utils"
 interface Props {
   open: boolean
   onClose: () => void
-  citaId: number
+  citaId?: number
+  presupuestoId?: number
   importe: number
-  onSuccess: () => void
+  fechaInicio?: string
+  onSuccess: (citaId?: number) => void
 }
 
 type Estado = "idle" | "procesando" | "ok" | "error"
 
-export function ModalGooglePay({ open, onClose, citaId, importe, onSuccess }: Props) {
+export function ModalGooglePay({ open, onClose, citaId, presupuestoId, importe, fechaInicio, onSuccess }: Props) {
   const [estado, setEstado] = useState<Estado>("idle")
   const [error, setError] = useState("")
+  const submittingRef = useRef(false)
 
   const pagar = async () => {
+    if (submittingRef.current) return
+    if (fechaInicio && new Date(fechaInicio) <= new Date()) {
+      setError("La fecha del servicio debe ser futura. Selecciona otro horario.")
+      setEstado("error")
+      return
+    }
+    submittingRef.current = true
     setEstado("procesando")
     setError("")
     try {
-      await new Promise((r) => setTimeout(r, 2000)) // Simular latencia
-      await api.post("/pagos/google-pay", { cita_id: citaId, importe })
+      await new Promise((r) => setTimeout(r, 2000)) // Simular latencia Google Pay
+      let nuevaCitaId: number | undefined
+      if (presupuestoId) {
+        const res = await api.post(`/pagos/presupuesto/${presupuestoId}`, { fecha_inicio: fechaInicio || null })
+        nuevaCitaId = res.data.cita_id
+      } else {
+        await api.post("/pagos/google-pay", { cita_id: citaId, importe })
+      }
       setEstado("ok")
       setTimeout(() => {
-        onSuccess()
+        onSuccess(nuevaCitaId)
         onClose()
         setEstado("idle")
       }, 1500)
@@ -36,6 +52,8 @@ export function ModalGooglePay({ open, onClose, citaId, importe, onSuccess }: Pr
       const e = err as { response?: { data?: { detail?: string } } }
       setError(e.response?.data?.detail || "Google Pay ha rechazado el método. Estado: Pendiente de pago.")
       setEstado("error")
+    } finally {
+      submittingRef.current = false
     }
   }
 

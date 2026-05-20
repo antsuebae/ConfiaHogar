@@ -25,16 +25,13 @@ export default function ChatPage() {
   }, [usuario])
 
   useEffect(() => {
-    // Si viene de contactar, crear/abrir conversación automáticamente
-    const profId = params.get("profesional")
-    if (profId && usuario) {
-      api.post("/mensajes/conversaciones", { profesional_id: Number(profId) })
-        .then((r) => {
-          setActiva(r.data)
-          cargarConversaciones()
-        }).catch(() => {})
+    // Abrir conversación específica si viene por ?activa=ID
+    const activaId = params.get("activa")
+    if (activaId && conversaciones.length > 0) {
+      const found = conversaciones.find(c => c.id === Number(activaId))
+      if (found) setActiva(found)
     }
-  }, [params])
+  }, [params, conversaciones])
 
   const cargarConversaciones = async () => {
     try {
@@ -70,6 +67,7 @@ export default function ChatPage() {
               <button
                 key={c.id}
                 onClick={() => setActiva(c)}
+                aria-current={activa?.id === c.id ? "page" : undefined}
                 className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors border-b last:border-0 ${activa?.id === c.id ? "bg-primary-50" : ""}`}
               >
                 <Avatar className="h-10 w-10 flex-shrink-0">

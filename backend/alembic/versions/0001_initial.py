@@ -156,19 +156,22 @@ def upgrade():
         sa.Column("importe", sa.Float, nullable=False),
         sa.Column("comision", sa.Float, default=0.0),
         sa.Column("importe_neto", sa.Float),
-        sa.Column("metodo", sa.Enum("google_pay", "efectivo", "saldo_app", name="metodopago")),
+        sa.Column("metodo", sa.Enum("google_pay", "efectivo", name="metodopago")),
         sa.Column("estado", sa.Enum("pendiente", "pendiente_validacion", "completada", "congelada", "discrepancia", "reembolsada", name="estadotransaccion"), default="pendiente"),
         sa.Column("referencia_externa", sa.String(200)),
         sa.Column("notas", sa.Text),
         sa.Column("creado_en", sa.DateTime, server_default=sa.func.now()),
         sa.Column("actualizado_en", sa.DateTime, server_default=sa.func.now()),
+        sa.UniqueConstraint("cita_id", name="uq_transacciones_cita_id"),
     )
+
+    op.create_index("ix_citas_profesional_fecha", "citas", ["profesional_id", "fecha_inicio"])
 
     op.create_table(
         "notificaciones",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("usuario_id", sa.Integer, sa.ForeignKey("usuarios.id"), nullable=False),
-        sa.Column("tipo", sa.Enum("mensaje_nuevo", "cita_cancelada", "presupuesto_recibido", "pago_recibido", "resena_recibida", "recordatorio_cita", "cuenta_verificada", "discrepancia_pago", name="tiponotificacion"), nullable=False),
+        sa.Column("tipo", sa.Enum("mensaje_nuevo", "cita_cancelada", "cita_confirmada", "presupuesto_recibido", "pago_recibido", "resena_recibida", "recordatorio_cita", "cuenta_verificada", "discrepancia_pago", name="tiponotificacion"), nullable=False),
         sa.Column("titulo", sa.String(200), nullable=False),
         sa.Column("cuerpo", sa.Text),
         sa.Column("leida", sa.Boolean, default=False),

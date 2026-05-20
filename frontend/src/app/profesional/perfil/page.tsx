@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Camera, Save, Upload, CheckCircle, AlertTriangle, Eye, EyeOff } from "lucide-react"
+import { Camera, Save, Upload, CheckCircle, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -77,7 +77,7 @@ export default function PerfilProfesionalEditPage() {
 
   const subirCertificacion = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file || !nombreCert) { toast.error("Introduce el nombre del certificado primero"); return }
-    const form = new FormData(); form.append("file", file); form.append("nombre", nombreCert)
+    const form = new FormData(); form.append("file", file)
     try {
       await api.post(`/profesionales/me/certificaciones?nombre=${encodeURIComponent(nombreCert)}`, form, { headers: { "Content-Type": "multipart/form-data" } })
       toast.success("Certificación enviada para revisión")
@@ -90,10 +90,14 @@ export default function PerfilProfesionalEditPage() {
 
   const verificarCuenta = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
+    const form = new FormData(); form.append("file", file)
     try {
-      await api.post("/profesionales/me/verificar")
-      toast.success("Cuenta verificada. Tu perfil tiene ahora la insignia Verificado.")
-    } catch { toast.error("Error") }
+      await api.post("/profesionales/me/verificar", form, { headers: { "Content-Type": "multipart/form-data" } })
+      toast.success("DNI enviado. Recibirás la insignia Verificado tras la revisión.")
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || "Error al subir el DNI")
+    }
   }
 
   const guardarIban = async () => {
@@ -145,26 +149,26 @@ export default function PerfilProfesionalEditPage() {
         <CardHeader><CardTitle>Datos profesionales</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700">Profesión</label>
-            <Input value={profesion} onChange={(e) => setProfesion(e.target.value)} className="mt-1" placeholder="Fontanero, Electricista..." />
+            <label htmlFor="prof-profesion" className="text-sm font-medium text-gray-700">Profesión</label>
+            <Input id="prof-profesion" value={profesion} onChange={(e) => setProfesion(e.target.value)} className="mt-1" placeholder="Fontanero, Electricista..." />
           </div>
           <div>
             <div className="flex justify-between mb-1">
-              <label className="text-sm font-medium text-gray-700">Descripción</label>
+              <label htmlFor="prof-descripcion" className="text-sm font-medium text-gray-700">Descripción</label>
               <span className={`text-xs ${MAX_DESC - descripcion.length < 50 ? "text-danger" : "text-gray-400"}`}>{MAX_DESC - descripcion.length} restantes</span>
             </div>
-            <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={MAX_DESC} rows={4}
+            <textarea id="prof-descripcion" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={MAX_DESC} rows={4}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Describe tus servicios, experiencia, especialidades..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-gray-700">Tarifa/hora (€)</label>
-              <Input value={tarifaHora} onChange={(e) => setTarifaHora(e.target.value)} type="number" min="0" className="mt-1" />
+              <label htmlFor="prof-tarifa" className="text-sm font-medium text-gray-700">Tarifa/hora (€)</label>
+              <Input id="prof-tarifa" value={tarifaHora} onChange={(e) => setTarifaHora(e.target.value)} type="number" min="0" className="mt-1" />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Ciudad</label>
-              <Input value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mt-1" placeholder="Sevilla" />
+              <label htmlFor="prof-ciudad" className="text-sm font-medium text-gray-700">Ciudad</label>
+              <Input id="prof-ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mt-1" placeholder="Sevilla" />
             </div>
           </div>
           <div className="flex gap-4">

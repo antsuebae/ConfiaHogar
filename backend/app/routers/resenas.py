@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime, timedelta
 import uuid
 from app.database import get_db
 from app.models.usuario import Usuario
@@ -125,6 +126,8 @@ def eliminar_imagen_resena(
     resena = db.query(Resena).filter(Resena.id == resena_id, Resena.cliente_id == current_user.id).first()
     if not resena:
         raise HTTPException(404, "Reseña no encontrada")
+    if resena.creado_en and datetime.utcnow() - resena.creado_en > timedelta(hours=24):
+        raise HTTPException(400, "El plazo de 24h para eliminar la imagen ha vencido")
     resena.imagen_url = None
     db.commit()
     return {"mensaje": "Imagen eliminada"}

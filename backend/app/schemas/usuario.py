@@ -76,3 +76,4 @@ class RecargaSaldoRequest(BaseModel):
 class DatosPagoRequest(BaseModel):
     iban: str
     titular: str
+    tipo: Optional[str] = "iban"  # "iban" | "tarjeta"

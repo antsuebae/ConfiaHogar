@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, LogOut, User, Calendar, MessageSquare, Search, Home, Wrench } from "lucide-react"
+import { Bell, LogOut, Calendar, MessageSquare, Search, Home, Wrench, Euro, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +70,18 @@ export function Navbar() {
                         <MessageSquare className="h-4 w-4" /> Mensajes
                       </Button>
                     </Link>
+                    <Link href="/profesional/cobros">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Euro className="h-4 w-4" /> Cobros
+                      </Button>
+                    </Link>
+                    {usuario.email === "admin@confiahogar.com" && (
+                      <Link href="/admin">
+                        <Button variant="ghost" size="sm" className="gap-2 text-primary-700">
+                          <Shield className="h-4 w-4" /> Admin
+                        </Button>
+                      </Link>
+                    )}
                   </>
                 )}
               </div>

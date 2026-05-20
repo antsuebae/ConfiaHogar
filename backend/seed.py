@@ -35,6 +35,18 @@ def seed():
 
         print("🌱 Insertando datos de prueba...")
 
+        # Crear usuario admin
+        admin = Usuario(
+            email="admin@confiahogar.com",
+            hashed_password=hash_password("Admin1234!"),
+            nombre="Admin",
+            apellidos="CONFIAHOGAR",
+            rol=RolUsuario.cliente,  # uses cliente role; admin status determined by email
+            saldo=0.0,
+            estado=EstadoCuenta.activa,
+        )
+        db.add(admin)
+
         # Crear clientes
         for nombre, apellidos, email in CLIENTES:
             u = Usuario(
@@ -85,6 +97,7 @@ def seed():
         print(f"✅ Seed completado: {len(CLIENTES)} clientes, {len(PROFESIONES)} profesionales")
         print("   Email de prueba (cliente): maria.garcia@email.com / Test1234!")
         print("   Email de prueba (profesional): fontanero@confiahogar.com / Test1234!")
+        print("   Email de prueba (admin): admin@confiahogar.com / Admin1234!")
 
     except Exception as e:
         db.rollback()
