@@ -27,6 +27,7 @@ export default function PerfilProfesionalEditPage() {
   const [iban, setIban] = useState("")
   const [nombreCert, setNombreCert] = useState("")
   const [disponible, setDisponible] = useState(true)
+  const [disponibleUrgencias, setDisponibleUrgencias] = useState(false)
   const [visible, setVisible] = useState(true)
   const [showEliminar, setShowEliminar] = useState(false)
   const [confirmacion, setConfirmacion] = useState("")
@@ -42,6 +43,7 @@ export default function PerfilProfesionalEditPage() {
       setTarifaHora(p.tarifa_hora ? String(p.tarifa_hora) : "")
       setCiudad(p.ciudad || "")
       setDisponible(p.disponible)
+      setDisponibleUrgencias(p.disponible_urgencias ?? false)
       setVisible(p.perfil_visible)
     }).catch(() => {})
   }, [usuario])
@@ -55,6 +57,7 @@ export default function PerfilProfesionalEditPage() {
         tarifa_hora: tarifaHora ? Number(tarifaHora) : undefined,
         ciudad,
         disponible,
+        disponible_urgencias: disponibleUrgencias,
         perfil_visible: visible,
       })
       toast.success("Perfil actualizado")
@@ -171,7 +174,7 @@ export default function PerfilProfesionalEditPage() {
               <Input id="prof-ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mt-1" placeholder="Sevilla" />
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={disponible} onChange={(e) => setDisponible(e.target.checked)} className="rounded" />
               <span className="text-sm text-gray-700">Disponible</span>
@@ -179,6 +182,12 @@ export default function PerfilProfesionalEditPage() {
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} className="rounded" />
               <span className="text-sm text-gray-700">Perfil visible</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={disponibleUrgencias} onChange={(e) => setDisponibleUrgencias(e.target.checked)} className="rounded accent-red-600" />
+              <span className="text-sm font-medium text-red-700 flex items-center gap-1">
+                ⚡ Disponible para urgencias 24h
+              </span>
             </label>
           </div>
           <Button onClick={guardar} disabled={saving} className="gap-2">

@@ -64,7 +64,7 @@ async def upload_image(file: UploadFile, folder: str = "general") -> str:
         length=len(content),
         content_type=file.content_type,
     )
-    return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
+    return f"{settings.minio_public_url}/{settings.minio_bucket}/{object_name}"
 
 
 async def upload_document(file: UploadFile, folder: str = "docs") -> str:
@@ -84,7 +84,7 @@ async def upload_document(file: UploadFile, folder: str = "docs") -> str:
         length=len(content),
         content_type=file.content_type,
     )
-    return f"http://{settings.minio_endpoint}/{settings.minio_bucket}/{object_name}"
+    return f"{settings.minio_public_url}/{settings.minio_bucket}/{object_name}"
 
 
 def delete_object(url: str):

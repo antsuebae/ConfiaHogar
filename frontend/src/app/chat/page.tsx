@@ -50,8 +50,8 @@ export default function ChatPage() {
   if (cargando) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /></div>
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="flex gap-4 h-[calc(100vh-12rem)]">
+    <div className="max-w-6xl mx-auto px-4 pt-4">
+      <div className="flex gap-4 h-[calc(100vh-5rem)]">
         {/* Lista de conversaciones */}
         <div className="w-72 flex-shrink-0 bg-white rounded-xl border overflow-y-auto">
           <div className="p-4 border-b">

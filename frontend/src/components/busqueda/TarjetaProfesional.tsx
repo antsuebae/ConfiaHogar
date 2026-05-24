@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { Star, MapPin, CheckCircle, Clock, Euro } from "lucide-react"
+import { Star, MapPin, CheckCircle, Clock, Euro, Zap } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,12 @@ export function TarjetaProfesional({ profesional }: Props) {
                 <p className="text-sm text-primary-600 font-medium truncate">{profesional.profesion}</p>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                {profesional.disponible_urgencias && (
+                  <Badge className="text-xs bg-red-600 hover:bg-red-600 gap-1">
+                    <Zap className="h-3 w-3" />
+                    Urgencias 24h
+                  </Badge>
+                )}
                 {profesional.disponible ? (
                   <Badge variant="success" className="text-xs">Disponible</Badge>
                 ) : (

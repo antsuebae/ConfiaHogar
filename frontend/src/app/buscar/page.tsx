@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, MapPin, SlidersHorizontal, Loader2, RefreshCw } from "lucide-react"
+import { Search, MapPin, SlidersHorizontal, Loader2, RefreshCw, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TarjetaProfesional } from "@/components/busqueda/TarjetaProfesional"
@@ -14,6 +14,7 @@ export default function BuscarPage() {
   const [profesion, setProfesion] = useState(params.get("profesion") || "")
   const [precioMax, setPrecioMax] = useState("")
   const [valoracionMin, setValoracionMin] = useState("")
+  const [soloUrgencias, setSoloUrgencias] = useState(false)
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [codigoPostal, setCodigoPostal] = useState("")
@@ -42,6 +43,7 @@ export default function BuscarPage() {
       if (precioMax && !isNaN(Number(precioMax))) queryParams.precio_max = precioMax
       else if (precioMax) { toast.error("El precio debe ser un número"); setCargando(false); return }
       if (valoracionMin) queryParams.valoracion_min = valoracionMin
+      if (soloUrgencias) queryParams.urgencias = "true"
       const latFinal = latOverride ?? lat
       const lngFinal = lngOverride ?? lng
       if (usarGeo && latFinal !== null && lngFinal !== null) {
@@ -172,6 +174,18 @@ export default function BuscarPage() {
               <option value="4.5">4.5+ estrellas</option>
             </select>
           </div>
+          <button
+            type="button"
+            onClick={() => setSoloUrgencias(v => !v)}
+            className={`flex items-center gap-2 h-10 px-4 rounded-md border text-sm font-medium transition-colors ${
+              soloUrgencias
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Urgencias 24h
+          </button>
         </div>
       </div>
 
@@ -185,7 +199,7 @@ export default function BuscarPage() {
       {!cargando && buscado && resultados.length === 0 && (
         <div className="text-center py-16">
           <p className="text-gray-500 mb-4">No se encontraron profesionales. Intenta ampliar la búsqueda.</p>
-          <Button variant="outline" onClick={() => { setProfesion(""); setPrecioMax(""); setValoracionMin(""); buscar() }} className="gap-2">
+          <Button variant="outline" onClick={() => { setProfesion(""); setPrecioMax(""); setValoracionMin(""); setSoloUrgencias(false); buscar() }} className="gap-2">
             <RefreshCw className="h-4 w-4" /> Mostrar todos
           </Button>
         </div>

@@ -1,0 +1,17 @@
+{
+  "project": "confiahogar",
+  "branch": "main",
+  "updated_at": "2026-05-24T00:00:00Z",
+  "summary": "Plataforma CONFIAHOGAR (46 HU implementadas) para conectar clientes con profesionales del hogar. Stack: Next.js 14 + FastAPI + PostgreSQL + MinIO + Docker Compose + JWT + WebSockets. Primera sesión de DevLog — contexto derivado del repo.",
+  "decisions": [],
+  "discarded": [],
+  "pending": [
+    "Hacer commit de los cambios no guardados: nuevas migraciones 0005_fechas_bloqueadas y 0006_urgencias, modelo FechaBloqueada, endpoints en disponibilidad.py (fechas-bloqueadas, slots), campo disponible_urgencias en Profesional",
+    "Verificar que las migraciones 0005 y 0006 aplican correctamente con 'alembic upgrade head' en el contenedor backend",
+    "Revisar y hacer commit de los cambios en frontend: buscar/page.tsx, profesional/calendario/page.tsx, profesional/perfil/page.tsx, TarjetaProfesional.tsx, ChatWindow.tsx, types/index.ts, notificaciones/page.tsx, chat/page.tsx",
+    "Revisar cambios en pagos.py, profesionales.py (routers), config.py, main.py, schemas/profesional.py, utils/storage.py, seed.py y hacer commit",
+    "Verificar cambios en docker-compose.yml antes de commit"
+  ],
+  "blockers": [],
+  "notes": "Hay muchos cambios sin commit en main. Las nuevas features principales del WIP son: (1) bloqueo de fechas por el profesional (FechaBloqueada model + migration 0005 + endpoints GET/PUT fechas-bloqueadas), (2) flag disponible_urgencias en Profesional (migration 0006). Credenciales MinIO: ver README (minioadmin / minioadmin123 — solo entorno local)."
+}

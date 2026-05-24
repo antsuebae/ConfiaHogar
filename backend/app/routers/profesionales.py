@@ -32,6 +32,7 @@ def _build_card(prof: Profesional, lat: float = None, lng: float = None) -> dict
         "ciudad": prof.ciudad,
         "verificado": prof.verificado,
         "disponible": prof.disponible,
+        "disponible_urgencias": prof.disponible_urgencias or False,
         "distancia_km": distancia,
     }
 
@@ -59,6 +60,7 @@ def buscar_profesionales(
     radio_km: float = Query(5.0),
     precio_max: Optional[float] = Query(None),
     valoracion_min: Optional[float] = Query(None),
+    urgencias: Optional[bool] = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -76,6 +78,8 @@ def buscar_profesionales(
         )
     if valoracion_min:
         query = query.filter(Profesional.valoracion_media >= valoracion_min)
+    if urgencias:
+        query = query.filter(Profesional.disponible_urgencias == True)
 
     profesionales = query.offset((page - 1) * limit).limit(limit).all()
 

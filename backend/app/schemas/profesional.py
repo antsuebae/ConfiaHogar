@@ -31,6 +31,7 @@ class ProfesionalUpdate(BaseModel):
     longitud: Optional[float] = None
     radio_servicio_km: Optional[float] = None
     disponible: Optional[bool] = None
+    disponible_urgencias: Optional[bool] = None
     perfil_visible: Optional[bool] = None
 
 
@@ -53,6 +54,7 @@ class ProfesionalResponse(ProfesionalBase):
     verificacion_pendiente: bool = False
     cuenta_verificada: bool = False
     disponible: bool
+    disponible_urgencias: bool = False
     perfil_visible: bool
     valoracion_media: float
     total_resenas: int
@@ -82,6 +84,7 @@ class ProfesionalCard(BaseModel):
     ciudad: Optional[str]
     verificado: bool
     disponible: bool
+    disponible_urgencias: bool
     distancia_km: Optional[float] = None
 
     class Config:

@@ -181,6 +181,80 @@ def pagar_presupuesto(
     return tx
 
 
+@router.post("/presupuesto/{presupuesto_id}/efectivo", response_model=TransaccionResponse)
+def pagar_presupuesto_efectivo(
+    presupuesto_id: int,
+    body: PagarPresupuestoRequest = PagarPresupuestoRequest(),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Cliente declara que pagará en efectivo al profesional. Crea cita + transacción pendiente de validación."""
+    from app.models.mensaje import Conversacion
+    from app.models.profesional import Profesional
+
+    presupuesto = db.query(Presupuesto).filter(Presupuesto.id == presupuesto_id).with_for_update().first()
+    if not presupuesto:
+        raise HTTPException(404, "Presupuesto no encontrado")
+    if presupuesto.estado == EstadoPresupuesto.pagado:
+        raise HTTPException(409, "Este presupuesto ya ha sido pagado")
+    if presupuesto.estado != EstadoPresupuesto.aceptado:
+        raise HTTPException(400, "El presupuesto debe estar aceptado antes de pagar")
+
+    conv = db.query(Conversacion).filter(Conversacion.id == presupuesto.conversacion_id).first()
+    if not conv:
+        raise HTTPException(404, "Conversación no encontrada")
+    if conv.cliente_id != current_user.id:
+        raise HTTPException(403, "Solo el cliente puede pagar este presupuesto")
+
+    cita = db.query(Cita).filter(
+        Cita.cliente_id == conv.cliente_id,
+        Cita.profesional_id == conv.profesional_id,
+        Cita.estado.in_([EstadoCita.pendiente, EstadoCita.confirmada]),
+    ).first()
+    if not cita:
+        try:
+            fecha = datetime.fromisoformat(body.fecha_inicio) if body.fecha_inicio else datetime.utcnow() + timedelta(days=1)
+        except (ValueError, TypeError):
+            fecha = datetime.utcnow() + timedelta(days=1)
+        cita = Cita(
+            cliente_id=conv.cliente_id,
+            profesional_id=conv.profesional_id,
+            titulo=presupuesto.concepto or "Servicio contratado",
+            fecha_inicio=fecha,
+        )
+        db.add(cita)
+        db.flush()
+
+    comision, importe_neto = _calcular_comision_y_neto(presupuesto.importe)
+    tx = Transaccion(
+        cita_id=cita.id,
+        cliente_id=current_user.id,
+        profesional_id=conv.profesional_id,
+        importe=presupuesto.importe,
+        comision=comision,
+        importe_neto=importe_neto,
+        metodo=MetodoPago.efectivo,
+        estado=EstadoTransaccion.pendiente_validacion,
+    )
+    db.add(tx)
+    presupuesto.estado = EstadoPresupuesto.pagado
+
+    prof = db.query(Profesional).filter(Profesional.id == conv.profesional_id).first()
+    if prof:
+        notif = Notificacion(
+            usuario_id=prof.usuario_id,
+            tipo=TipoNotificacion.pago_recibido,
+            titulo="Pago en efectivo pendiente",
+            cuerpo=f"El cliente ha declarado que pagará {presupuesto.importe}€ en efectivo. Confírmalo cuando lo recibas.",
+            url_destino="/profesional/calendario",
+        )
+        db.add(notif)
+
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
 @router.post("/efectivo/cliente", response_model=TransaccionResponse)
 def confirmar_efectivo_cliente(
     data: PagoEfectivoRequest,
@@ -246,6 +320,14 @@ def confirmar_efectivo_profesional(
         if prof:
             prof.saldo_pendiente = (prof.saldo_pendiente or 0) + tx.importe_neto
             prof.total_servicios = (prof.total_servicios or 0) + 1
+        notif_cliente = Notificacion(
+            usuario_id=tx.cliente_id,
+            tipo=TipoNotificacion.cita_confirmada,
+            titulo="Servicio completado — ¡Deja tu reseña!",
+            cuerpo="El profesional ha confirmado el pago en efectivo. ¿Qué tal fue el servicio?",
+            url_destino=f"/citas/{tx.cita_id}/resena",
+        )
+        db.add(notif_cliente)
 
     db.commit()
     db.refresh(tx)

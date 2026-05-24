@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Calendar as CalIcon, AlertTriangle, Clock, Plus, Trash2, CheckCircle, CalendarClock } from "lucide-react"
+import { Calendar as CalIcon, AlertTriangle, Clock, Plus, Trash2, CheckCircle, CalendarClock, Banknote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { api } from "@/lib/api"
 import { useAuthStore } from "@/store/auth"
 import { useWebSocket } from "@/hooks/useWebSocket"
-import type { Cita, FranjaDisponible } from "@/types"
+import type { Cita, FranjaDisponible, Transaccion } from "@/types"
 import type { PluginDef } from "@fullcalendar/core"
 import { formatDate } from "@/lib/utils"
 import toast from "react-hot-toast"
@@ -52,6 +52,9 @@ export default function CalendarioProfesionalPage() {
   const [guardando, setGuardando] = useState(false)
   const [modalPropuesta, setModalPropuesta] = useState<Cita | null>(null)
   const [fechaPropuesta, setFechaPropuesta] = useState("")
+  const [fechasBloqueadas, setFechasBloqueadas] = useState<string[]>([])
+  const [nuevaFechaBloq, setNuevaFechaBloq] = useState("")
+  const [cobros, setCobros] = useState<Transaccion[]>([])
 
   useWebSocket((data) => {
     if (data.tipo === "cita_actualizada") cargar()
@@ -61,6 +64,8 @@ export default function CalendarioProfesionalPage() {
     if (!usuario) { router.push("/login"); return }
     cargar()
     cargarFranjas()
+    cargarFechasBloqueadas()
+    api.get("/pagos/mis-cobros").then(r => setCobros(r.data)).catch(() => {})
     Promise.all([
       import("@fullcalendar/daygrid"),
       import("@fullcalendar/timegrid"),
@@ -75,6 +80,32 @@ export default function CalendarioProfesionalPage() {
     api.get("/disponibilidad/profesionales/me/franjas")
       .then(r => setFranjas(r.data))
       .catch(() => {})
+
+  const cargarFechasBloqueadas = () =>
+    api.get("/disponibilidad/profesionales/me/fechas-bloqueadas")
+      .then(r => setFechasBloqueadas(r.data))
+      .catch(() => {})
+
+  const agregarFechaBloqueada = () => {
+    if (!nuevaFechaBloq) return
+    if (fechasBloqueadas.includes(nuevaFechaBloq)) { toast.error("Esa fecha ya está bloqueada"); return }
+    if (nuevaFechaBloq < new Date().toISOString().slice(0, 10)) { toast.error("La fecha debe ser futura"); return }
+    const nuevas = [...fechasBloqueadas, nuevaFechaBloq].sort()
+    setFechasBloqueadas(nuevas)
+    setNuevaFechaBloq("")
+  }
+
+  const quitarFechaBloqueada = (f: string) =>
+    setFechasBloqueadas(prev => prev.filter(x => x !== f))
+
+  const guardarFechasBloqueadas = async () => {
+    try {
+      await api.put("/disponibilidad/profesionales/me/fechas-bloqueadas", fechasBloqueadas)
+      toast.success("Días bloqueados guardados")
+    } catch {
+      toast.error("Error guardando días bloqueados")
+    }
+  }
 
   const cancelar = async () => {
     if (!activa || !motivo.trim()) { toast.error("El motivo es obligatorio"); return }
@@ -93,6 +124,19 @@ export default function CalendarioProfesionalPage() {
     try {
       await api.post(`/citas/${cita.id}/confirmar`)
       toast.success("Cita confirmada — el cliente ha sido notificado")
+      cargar()
+      setActiva(null)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || "Error al confirmar")
+    }
+  }
+
+  const confirmarEfectivo = async (txId: number) => {
+    try {
+      await api.post(`/pagos/efectivo/profesional/${txId}`, { recibido: true })
+      toast.success("Pago en efectivo confirmado")
+      api.get("/pagos/mis-cobros").then(r => setCobros(r.data)).catch(() => {})
       cargar()
       setActiva(null)
     } catch (err: unknown) {
@@ -306,6 +350,39 @@ export default function CalendarioProfesionalPage() {
         </Button>
       </div>
 
+      {/* Días concretos bloqueados */}
+      <div className="bg-white rounded-xl border p-6 shadow-sm">
+        <h2 className="font-semibold text-gray-900 mb-1">Días bloqueados</h2>
+        <p className="text-sm text-gray-500 mb-4">Marca días concretos en los que no puedes trabajar aunque tu horario semanal lo indique (festivos, vacaciones, etc.).</p>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="date"
+            value={nuevaFechaBloq}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={e => setNuevaFechaBloq(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <Button variant="outline" onClick={agregarFechaBloqueada} disabled={!nuevaFechaBloq}>
+            Añadir
+          </Button>
+        </div>
+        {fechasBloqueadas.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">Sin días bloqueados</p>
+        ) : (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {fechasBloqueadas.map(f => (
+              <span key={f} className="flex items-center gap-1 bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-1 rounded-full">
+                {new Date(f + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })}
+                <button onClick={() => quitarFechaBloqueada(f)} aria-label={`Quitar ${f}`} className="ml-1 hover:text-red-900">✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <Button variant="outline" onClick={guardarFechasBloqueadas}>
+          Guardar días bloqueados
+        </Button>
+      </div>
+
       {/* Modal detalle cita */}
       <Dialog open={!!activa} onOpenChange={() => { setActiva(null); setMotivo("") }}>
         <DialogContent>
@@ -334,6 +411,20 @@ export default function CalendarioProfesionalPage() {
                   </Button>
                 </div>
               )}
+
+              {(() => {
+                const txEfectivo = cobros.find(t => t.cita_id === activa.id && t.metodo === "efectivo" && t.estado === "pendiente_validacion")
+                return txEfectivo ? (
+                  <div className="pt-3 border-t">
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded-md px-3 py-2 mb-2">
+                      El cliente ha declarado que pagará en efectivo. Confírmalo cuando recibas el dinero.
+                    </p>
+                    <Button className="w-full gap-1 bg-amber-600 hover:bg-amber-700" onClick={() => confirmarEfectivo(txEfectivo.id)}>
+                      <Banknote className="h-4 w-4" /> Confirmar cobro en efectivo
+                    </Button>
+                  </div>
+                ) : null
+              })()}
 
               {!["completada", "cancelada_cliente", "cancelada_profesional", "pendiente"].includes(activa.estado) && (
                 <div className="pt-3 border-t space-y-2">

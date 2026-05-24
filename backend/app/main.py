@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import auth, usuarios, profesionales, citas, mensajes, presupuestos, resenas, pagos, notificaciones, facturas, admin, disponibilidad
+from app.models import fecha_bloqueada as _  # noqa: F401 — ensures FechaBloqueada mapper is registered at startup
 
 
 async def _worker_recordatorios():

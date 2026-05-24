@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-confiahogar}:${POSTGRES_PASSWORD:-confiahogar123}@postgres:5432/${POSTGRES_DB:-confiahogar}
       SECRET_KEY: ${SECRET_KEY:-supersecretkey_change_in_production_32chars}
       MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_URL: http://localhost:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       MINIO_BUCKET: confiahogar

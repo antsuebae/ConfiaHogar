@@ -37,6 +37,7 @@ export default function NotificacionesPage() {
   const ICONOS: Record<string, string> = {
     mensaje_nuevo: "💬",
     cita_cancelada: "❌",
+    cita_confirmada: "✅",
     presupuesto_recibido: "💰",
     pago_recibido: "✅",
     resena_recibida: "⭐",

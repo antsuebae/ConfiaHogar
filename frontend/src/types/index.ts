@@ -27,6 +27,7 @@ export interface ProfesionalCard {
   ciudad?: string
   verificado: boolean
   disponible: boolean
+  disponible_urgencias: boolean
   distancia_km?: number
 }
 
@@ -37,6 +38,7 @@ export interface ProfesionalDetalle extends ProfesionalCard {
   longitud?: number
   radio_servicio_km: number
   perfil_visible: boolean
+  disponible_urgencias: boolean
   saldo_pendiente: number
   total_servicios: number
   cuenta_verificada: boolean

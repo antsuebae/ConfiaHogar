@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.models.disponibilidad import FranjaDisponible
+from app.models.fecha_bloqueada import FechaBloqueada
 from app.models.cita import Cita, EstadoCita
 from app.utils.auth import get_current_user
 
@@ -76,6 +77,47 @@ def guardar_franjas(
     return {"ok": True}
 
 
+@router.get("/profesionales/me/fechas-bloqueadas")
+def mis_fechas_bloqueadas(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    prof = current_user.perfil_profesional
+    if not prof:
+        raise HTTPException(404, "Perfil profesional no encontrado")
+    fechas = db.query(FechaBloqueada).filter(
+        FechaBloqueada.profesional_id == prof.id,
+        FechaBloqueada.fecha >= date.today(),
+    ).order_by(FechaBloqueada.fecha).all()
+    return [str(f.fecha) for f in fechas]
+
+
+@router.put("/profesionales/me/fechas-bloqueadas")
+def guardar_fechas_bloqueadas(
+    fechas: List[str],
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    prof = current_user.perfil_profesional
+    if not prof:
+        raise HTTPException(404, "Perfil profesional no encontrado")
+    for f in fechas:
+        try:
+            date.fromisoformat(f)
+        except ValueError:
+            raise HTTPException(400, f"Fecha inválida: {f} (formato esperado: YYYY-MM-DD)")
+    db.query(FechaBloqueada).filter(
+        FechaBloqueada.profesional_id == prof.id,
+        FechaBloqueada.fecha >= date.today(),
+    ).delete()
+    for f in fechas:
+        d = date.fromisoformat(f)
+        if d >= date.today():
+            db.add(FechaBloqueada(profesional_id=prof.id, fecha=d))
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/profesionales/{profesional_id}/slots")
 def slots_disponibles(
     profesional_id: int,
@@ -92,6 +134,7 @@ def slots_disponibles(
 
     hoy = date.today()
     rango_fin = hoy + timedelta(days=semanas * 7)
+
     citas = db.query(Cita).filter(
         Cita.profesional_id == profesional_id,
         Cita.estado.in_([EstadoCita.pendiente, EstadoCita.confirmada, EstadoCita.en_curso]),
@@ -104,10 +147,20 @@ def slots_disponibles(
         fin = c.fecha_fin if c.fecha_fin else c.fecha_inicio + timedelta(hours=1)
         ocupados.append((c.fecha_inicio, fin))
 
+    bloqueadas: set[date] = {
+        f.fecha for f in db.query(FechaBloqueada).filter(
+            FechaBloqueada.profesional_id == profesional_id,
+            FechaBloqueada.fecha >= hoy,
+            FechaBloqueada.fecha <= rango_fin,
+        ).all()
+    }
+
     slots: list[str] = []
     minimo = datetime.utcnow() + timedelta(hours=2)
     for offset in range(0, semanas * 7):
         dia = hoy + timedelta(days=offset)
+        if dia in bloqueadas:
+            continue
         dia_semana = dia.weekday()  # 0=Lun, 6=Dom
         for franja in franjas:
             if franja.dia_semana != dia_semana:

@@ -35,6 +35,7 @@ class Profesional(Base):
     verificacion_pendiente = Column(Boolean, default=False)
     perfil_visible = Column(Boolean, default=True)
     disponible = Column(Boolean, default=True)
+    disponible_urgencias = Column(Boolean, default=False)
 
     # Cuenta bancaria tokenizada
     iban_token = Column(String(500))
@@ -59,6 +60,7 @@ class Profesional(Base):
     resenas_recibidas = relationship("Resena", foreign_keys="Resena.profesional_id", back_populates="profesional")
     conversaciones = relationship("Conversacion", foreign_keys="Conversacion.profesional_id", back_populates="profesional")
     franjas = relationship("FranjaDisponible", back_populates="profesional", cascade="all, delete-orphan")
+    fechas_bloqueadas = relationship("FechaBloqueada", back_populates="profesional", cascade="all, delete-orphan")
 
 
 class Certificacion(Base):

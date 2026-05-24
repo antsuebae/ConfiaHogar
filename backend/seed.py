@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from app.database import SessionLocal
 from app.models.usuario import Usuario, RolUsuario, EstadoCuenta
 from app.models.profesional import Profesional
+from app.models.fecha_bloqueada import FechaBloqueada  # noqa: F401 — registers mapper before Profesional.fechas_bloqueadas resolves
 from app.utils.auth import hash_password
 
 PROFESIONES = [

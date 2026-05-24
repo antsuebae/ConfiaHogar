@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Send, Image as ImageIcon, FileText, CheckCheck, Euro, CalendarDays } from "lucide-react"
+import { Send, Image as ImageIcon, FileText, CheckCheck, Euro, CalendarDays, Banknote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -31,6 +31,7 @@ export function ChatWindow({ conversacion }: Props) {
   const [contraofertaDe, setContraofertaDe] = useState<Presupuesto | null>(null)
   const [pagarPresupuesto, setPagarPresupuesto] = useState<Presupuesto | null>(null)
   const [modalFecha, setModalFecha] = useState<Presupuesto | null>(null)
+  const [modalFechaEfectivo, setModalFechaEfectivo] = useState<Presupuesto | null>(null)
   const [fechasCita, setFechasCita] = useState<Map<number, string>>(new Map())
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -161,10 +162,22 @@ export function ChatWindow({ conversacion }: Props) {
   }
 
   const onPagoExitoso = (citaId?: number) => {
-    toast.success("¡Pago realizado con éxito!")
+    toast.success("¡Pago realizado! Tu cita está confirmada.")
     cargarPresupuestos()
     if (citaId) {
-      setTimeout(() => router.push(`/citas/${citaId}/resena`), 1000)
+      setTimeout(() => router.push(`/citas/${citaId}`), 1500)
+    }
+  }
+
+  const confirmarFechaEfectivo = async (p: Presupuesto, fecha: string) => {
+    setModalFechaEfectivo(null)
+    try {
+      await api.post(`/pagos/presupuesto/${p.id}/efectivo`, { fecha_inicio: fecha })
+      toast.success("¡Cita creada! Paga en efectivo al profesional el día del servicio.")
+      cargarPresupuestos()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || "Error al registrar pago en efectivo")
     }
   }
 
@@ -229,6 +242,7 @@ export function ChatWindow({ conversacion }: Props) {
                     onRechazar={rechazarPresupuesto}
                     onContraofertar={(p) => { setContraofertaDe(p); setModalPresupuesto(true) }}
                     onPagar={iniciarPago}
+                    onPagarEfectivo={(p) => setModalFechaEfectivo(p)}
                   />
                 )}
                 {m.tipo === "texto" && (
@@ -311,6 +325,15 @@ export function ChatWindow({ conversacion }: Props) {
         onClose={() => setModalFecha(null)}
         onConfirmar={confirmarFechaYPagar}
       />
+
+      <ModalFechaCita
+        presupuesto={modalFechaEfectivo}
+        conversacion={conversacion}
+        onClose={() => setModalFechaEfectivo(null)}
+        onConfirmar={confirmarFechaEfectivo}
+        titulo="Elige fecha — Pago en efectivo"
+        labelConfirmar="Confirmar cita (pagaré en efectivo)"
+      />
     </div>
   )
 }
@@ -354,6 +377,7 @@ function PresupuestoMensaje({
   onRechazar,
   onContraofertar,
   onPagar,
+  onPagarEfectivo,
 }: {
   contenido: string
   esMio: boolean
@@ -363,6 +387,7 @@ function PresupuestoMensaje({
   onRechazar: (p: Presupuesto) => void
   onContraofertar: (p: Presupuesto) => void
   onPagar: (p: Presupuesto) => void
+  onPagarEfectivo: (p: Presupuesto) => void
 }) {
   try {
     const data = JSON.parse(contenido)
@@ -390,28 +415,39 @@ function PresupuestoMensaje({
         {data.concepto && <p className={`text-sm mt-1 ${esMio ? "text-primary-200" : "text-gray-600"}`}>{data.concepto}</p>}
 
         {puedeActuar && presupuesto && (
-          <div className="flex gap-1 mt-3 flex-wrap">
-            <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => onAceptar(presupuesto)}>
-              Aceptar
+          <div className="flex flex-col gap-2 mt-3">
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-base font-semibold py-5" onClick={() => onAceptar(presupuesto)}>
+              Aceptar presupuesto
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onContraofertar(presupuesto)}>
-              Contraofertar
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => onRechazar(presupuesto)}>
-              Rechazar
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => onContraofertar(presupuesto)}>
+                Contraofertar
+              </Button>
+              <Button size="sm" variant="ghost" className="flex-1 text-xs text-red-600 hover:text-red-700" onClick={() => onRechazar(presupuesto)}>
+                Rechazar
+              </Button>
+            </div>
           </div>
         )}
 
         {puedePagar && presupuesto && (
-          <Button
-            size="sm"
-            className="mt-3 w-full h-8 text-xs bg-[#4285F4] hover:bg-[#3367D6]"
-            onClick={() => onPagar(presupuesto)}
-          >
-            <svg viewBox="0 0 24 24" className="h-3 w-3 fill-white mr-1"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Pagar con Google Pay
-          </Button>
+          <div className="flex flex-col gap-2 mt-3">
+            <Button
+              className="w-full gap-1"
+              onClick={() => onPagar(presupuesto)}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Elegir fecha y pagar
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-1"
+              onClick={() => onPagarEfectivo(presupuesto)}
+            >
+              <Banknote className="h-4 w-4" />
+              Pagar en efectivo
+            </Button>
+          </div>
         )}
       </div>
     )
@@ -427,11 +463,15 @@ function ModalFechaCita({
   conversacion,
   onClose,
   onConfirmar,
+  titulo = "Elige fecha y hora para el servicio",
+  labelConfirmar = "Continuar al pago",
 }: {
   presupuesto: Presupuesto | null
   conversacion: Conversacion
   onClose: () => void
   onConfirmar: (p: Presupuesto, fecha: string) => void
+  titulo?: string
+  labelConfirmar?: string
 }) {
   const [slots, setSlots] = useState<string[]>([])
   const [cargando, setCargando] = useState(false)
@@ -468,14 +508,14 @@ function ModalFechaCita({
 
   return (
     <Dialog open={!!presupuesto} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-full overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary-600" />
-            Elige fecha y hora para el servicio
+            {titulo}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 min-w-0">
           <div className="rounded-lg bg-gray-50 border px-4 py-3 flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-500">Presupuesto</p>
@@ -499,7 +539,8 @@ function ModalFechaCita({
           {!cargando && slots.length > 0 && (
             <>
               {/* Day picker */}
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="w-full overflow-x-auto pb-1">
+                <div className="flex gap-2">
                 {dias.map(dia => {
                   const d = new Date(dia + "T12:00:00")
                   const activo = diaActivo === dia
@@ -516,10 +557,11 @@ function ModalFechaCita({
                     </button>
                   )
                 })}
+                </div>
               </div>
 
               {/* Hour slots */}
-              <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto w-full">
                 {slotsDia.map(slot => {
                   const hora = new Date(slot).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
                   const activo = seleccionado === slot
@@ -544,7 +586,7 @@ function ModalFechaCita({
             onClick={() => seleccionado && onConfirmar(presupuesto, new Date(seleccionado).toISOString())}
             disabled={!seleccionado}
           >
-            Continuar al pago
+            {labelConfirmar}
           </Button>
           <Button variant="ghost" className="w-full" onClick={onClose}>Cancelar</Button>
         </div>

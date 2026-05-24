@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 días
 
     minio_endpoint: str = "localhost:9000"
+    minio_public_url: str = "http://localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin123"
     minio_bucket: str = "confiahogar"
